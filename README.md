@@ -1,4 +1,4 @@
-# 🚨 ALERT PH: Developer Setup & Git Guide 🚨
+# 🚨 ALERT PH: Guide 🚨
 
 ## PART 1: Getting the Code (Do this ONLY the first time)
 To get the exact same code that is currently on GitHub onto your laptop:

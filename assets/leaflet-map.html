@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        .leaflet-container {
+            background-color: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        // Initialize map centered on Philippines
+        const map = L.map('map').setView([12.8797, 121.7740], 5);
+
+        // OpenFreeMap tiles
+        L.tileLayer('https://tiles.openfreemap.org/hot/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Sample markers for emergency services
+        const emergencyLocations = [
+            {
+                name: 'Nearest Hospital',
+                coords: [14.5995, 120.9842],
+                icon: '🏥'
+            },
+            {
+                name: 'Police Station',
+                coords: [14.6091, 121.0159],
+                icon: '🚓'
+            },
+            {
+                name: 'Fire Department',
+                coords: [14.5789, 120.9754],
+                icon: '🚒'
+            }
+        ];
+
+        emergencyLocations.forEach(location => {
+            const marker = L.marker(location.coords).addTo(map)
+                .bindPopup(`<strong>${location.name}</strong>`)
+                .setIcon(L.icon({
+                    iconUrl: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBkPSJNMTIgMkM2LjQ4IDIgMiA2LjQ4IDIgMTJzNC40OCAxMCAxMCAxMCAxMC00LjQ4IDEwLTEwUzE3LjUyIDIgMTIgMnptMCAxOGMtNC40MiAwLTgtMy41OC04LThzMy41OC04IDgtOCA4IDMuNTggOCA4LTMuNTggOC04IDh6Ii8+PC9zdmc+',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16],
+                    popupAnchor: [0, -16]
+                }));
+        });
+
+        // Make map accessible to React Native
+        window.mapReady = true;
+    </script>
+</body>
+</html>

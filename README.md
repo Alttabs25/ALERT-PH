@@ -7,4 +7,4 @@ To get the exact same code that is currently on GitHub onto your laptop:
 **Step 1:** Open VS Code and open a new Terminal (`Ctrl` + \` ).
 **Step 2:** Download the code by running:
 ```bash
-git clone [https://github.com/Alttabs25/ALERT-PH.git](https://github.com/Alttabs25/ALERT-PH.git)
+git clone https://github.com/Alttabs25/ALERT-PH.git

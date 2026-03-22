@@ -11,8 +11,11 @@ function RootLayoutNav() {
   return (
     <NavThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        {/* Add your other screens like login, register, etc. here */}
+       <Stack screenOptions={{ headerShown: false }}>
+  <Stack.Screen name="welcome" /> 
+  <Stack.Screen name="login" />
+  <Stack.Screen name="(tabs)" />
+</Stack>
       </Stack>
       {/* This changes the battery/clock color based on dark mode! */}
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />

@@ -2,53 +2,36 @@ import React from 'react';
 import { Animated, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
-// This allows the SVG paths to accept animated values
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
-interface ShieldProps {
-  progress: Animated.Value;
-}
-
-export default function ShieldLogo({ progress }: ShieldProps) {
-  
-  // Math to calculate the "drawing" effect
-  const strokeDashoffset = progress.interpolate({
+export default function ShieldLogo({ progress }: { progress: Animated.Value }) {
+  // Line drawing interpolation
+  const dashOffset = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [1000, 0],
   });
 
   return (
-    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-      <Svg width="220" height="220" viewBox="0 0 500 500">
-        {/* Outer Shield - strokeDashoffset is now a direct prop */}
+    <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+      <Svg width="200" height="200" viewBox="0 0 800 800">
+        {/* Outer Shield Geometry */}
         <AnimatedPath
-          d="M250 50 L80 140 V320 C80 420 250 480 250 480 C250 480 420 420 420 320 V140 L250 50 Z"
+          d="M400 50 L150 150 V450 C150 600 400 750 400 750 C400 750 650 600 650 450 V150 L400 50 Z"
           fill="none"
           stroke="#F83D3D"
-          strokeWidth="12"
+          strokeWidth="15"
           strokeDasharray="1000"
-          strokeDashoffset={strokeDashoffset} 
+          strokeDashoffset={dashOffset}
         />
-        
-        {/* The "A" inside */}
+        {/* Inner Branding (A & P) */}
         <AnimatedPath
-          d="M250 120 L150 320 M250 120 L350 320 M190 260 H310"
+          d="M400 200 L280 500 M400 200 L520 500 M340 400 H460"
           fill="none"
           stroke="#F83D3D"
-          strokeWidth="12"
+          strokeWidth="15"
           strokeLinecap="round"
           strokeDasharray="1000"
-          strokeDashoffset={strokeDashoffset}
-        />
-
-        {/* The "P" circle detail */}
-        <AnimatedPath
-          d="M250 240 A 40 40 0 1 1 249.9 240"
-          fill="none"
-          stroke="#A9A9A9" 
-          strokeWidth="12"
-          strokeDasharray="1000"
-          strokeDashoffset={strokeDashoffset}
+          strokeDashoffset={dashOffset}
         />
       </Svg>
     </View>

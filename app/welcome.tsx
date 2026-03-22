@@ -5,13 +5,14 @@ import ShieldLogo from '../components/ShieldLogo';
 
 export default function WelcomeScreen() {
   const router = useRouter();
-  const animationProgress = useRef(new Animated.Value(0)).current;
+  const progress = useRef(new Animated.Value(0)).current;
   const fadeText = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // 1. Draw the logo, 2. Fade in the text, 3. Go to login
+    // 1. Draw the Shield Logo (2.5s)
+    // 2. Fade in the "ALERT PH" text (0.8s)
     Animated.sequence([
-      Animated.timing(animationProgress, {
+      Animated.timing(progress, {
         toValue: 1,
         duration: 2500,
         useNativeDriver: true,
@@ -22,20 +23,22 @@ export default function WelcomeScreen() {
         useNativeDriver: true,
       }),
     ]).start(() => {
+      // Small pause before switching to login
       setTimeout(() => {
-        router.replace('/login');
+        router.replace('/(auth)/login'); 
       }, 1000);
     });
   }, []);
 
   return (
     <View style={styles.container}>
-      {/* The Shield Logo component we created above */}
-      <ShieldLogo progress={animationProgress} />
+      {/* Animated SVG Component */}
+      <ShieldLogo progress={progress} />
       
-      <Animated.View style={{ opacity: fadeText, alignItems: 'center', marginTop: 20 }}>
-        <Text style={styles.title}>ALERT PH</Text>
-        <Text style={styles.subtitle}>Emergency Safety App</Text>
+      {/* Branded Text with Red Accent Line */}
+      <Animated.View style={{ opacity: fadeText, alignItems: 'center' }}>
+        <View style={styles.accentLine} />
+        <Text style={styles.brandTitle}>ALERT PH</Text>
       </Animated.View>
     </View>
   );
@@ -48,15 +51,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  title: {
-    color: '#F83D3D',
-    fontSize: 28,
-    fontWeight: 'bold',
-    letterSpacing: 4,
+  accentLine: {
+    width: 80,
+    height: 4,
+    backgroundColor: '#F83D3D',
+    marginBottom: 10,
+    borderRadius: 2,
   },
-  subtitle: {
-    color: '#A9A9A9',
-    fontSize: 12,
-    marginTop: 5,
+  brandTitle: {
+    color: '#FFFFFF',
+    fontSize: 32,
+    fontWeight: '900',
+    fontStyle: 'italic',
+    letterSpacing: 3,
   },
 });

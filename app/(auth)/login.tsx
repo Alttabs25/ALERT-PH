@@ -5,7 +5,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Dimensions, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, {
   FadeInDown,
   interpolate,
@@ -18,7 +18,6 @@ import Animated, {
 
 const { width } = Dimensions.get('window');
 
-// --- TypeScript Interface for Props ---
 interface FloatingInputProps {
   label: string;
   value: string;
@@ -28,7 +27,6 @@ interface FloatingInputProps {
   colors: any;
 }
 
-// --- Reusable Floating Label Input Component ---
 const FloatingInput = ({ 
   label, 
   value, 
@@ -113,8 +111,12 @@ export default function AuthScreen() {
   }, [activeTab]);
 
   const handleAuth = async () => {
+    // Immediate Trigger: Switch to ambulance loader as soon as clicked
+    setShowLoader(true);
     setIsLoading(true);
-    setTimeout(async () => {
+
+    // Run background tasks (like SecureStore) while animation plays
+    try {
       if (activeTab === 'login' && rememberMe) {
         await saveSecureItem('user_email', email);
         await saveSecureItem('user_password', password);
@@ -122,13 +124,15 @@ export default function AuthScreen() {
         await deleteSecureItem('user_email');
         await deleteSecureItem('user_password');
       }
-      setIsLoading(false);
-      setShowLoader(true);
+    } catch (e) {
+      console.error(e);
+    }
 
-      setTimeout(() => {
-        router.replace('/(tabs)'); 
-      }, 2500);
-    }, 1500);
+    // Keep the ambulance on screen for the full 2.5s duration
+    setTimeout(() => {
+      setIsLoading(false);
+      router.replace('/(tabs)'); 
+    }, 2500);
   };
 
   if (showLoader) {
@@ -137,7 +141,7 @@ export default function AuthScreen() {
         <Animated.View entering={FadeInDown} style={{ alignItems: 'center' }}>
           <EmergencyLoader />
           <Text style={[styles.loaderText, { color: colors.text }]}>
-            Fetching medical data...
+            Emergency Response Initiated...
           </Text>
         </Animated.View>
       </View>
@@ -146,8 +150,6 @@ export default function AuthScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      
-      {/* Centered Logo Header */}
       <Animated.View entering={FadeInDown.delay(200)} style={styles.logoHeader}>
         <View style={[styles.logoCircle, { backgroundColor: colors.primary }]}>
           <Ionicons name="shield-checkmark" size={45} color="#FFF" />
@@ -156,8 +158,6 @@ export default function AuthScreen() {
       </Animated.View>
 
       <Animated.View entering={FadeInDown.duration(800)} style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        
-        {/* Sliding Tabs */}
         <View style={[styles.toggleContainer, { backgroundColor: colorScheme === 'dark' ? '#2A2A2A' : '#F0F0F0' }]}>
           <Animated.View style={[styles.slider, sliderStyle, { backgroundColor: colors.primary }]} />
           <TouchableOpacity style={styles.toggleBtn} onPress={() => setActiveTab('login')}>
@@ -172,9 +172,7 @@ export default function AuthScreen() {
           {activeTab === 'signup' && (
             <FloatingInput label="Full Name" icon="person-outline" value={fullName} onChangeText={setFullName} colors={colors} />
           )}
-
           <FloatingInput label="Type your email" icon="mail-outline" value={email} onChangeText={setEmail} colors={colors} />
-
           <FloatingInput label="Password" icon="lock-closed-outline" value={password} onChangeText={setPassword} secureTextEntry colors={colors} />
 
           {activeTab === 'login' && (
@@ -185,7 +183,7 @@ export default function AuthScreen() {
           )}
 
           <TouchableOpacity style={[styles.mainBtn, { backgroundColor: colors.primary }]} onPress={handleAuth}>
-            {isLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.mainBtnText}>{activeTab === 'login' ? 'LOGIN' : 'SIGN UP'}</Text>}
+            <Text style={styles.mainBtnText}>{activeTab === 'login' ? 'LOGIN' : 'SIGN UP'}</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -194,122 +192,23 @@ export default function AuthScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    justifyContent: 'center', // Centers vertically
-    alignItems: 'center',     // Centers horizontally
-    paddingBottom: 40 
-  },
-  logoHeader: { 
-    alignItems: 'center', 
-    marginBottom: 25 
-  },
-  logoCircle: { 
-    width: 80, 
-    height: 80, 
-    borderRadius: 20, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    marginBottom: 12, 
-    elevation: 8, 
-    shadowColor: '#000', 
-    shadowOpacity: 0.2, 
-    shadowRadius: 10 
-  },
-  logoText: { 
-    fontSize: 26, 
-    fontWeight: '900', 
-    letterSpacing: 3 
-  },
-  card: { 
-    width: width - 50, 
-    padding: 25, 
-    borderRadius: 35, 
-    borderWidth: 1, 
-    elevation: 10, 
-    shadowColor: '#000', 
-    shadowOpacity: 0.1, 
-    shadowRadius: 15,
-    alignSelf: 'center' // Explicit horizontal alignment
-  },
-  toggleContainer: { 
-    flexDirection: 'row', 
-    height: 50, 
-    borderRadius: 25, 
-    marginBottom: 35, 
-    position: 'relative' 
-  },
-  slider: { 
-    position: 'absolute', 
-    width: '50%', 
-    height: '100%', 
-    borderRadius: 25 
-  },
-  toggleBtn: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    zIndex: 1 
-  },
-  toggleText: { 
-    fontWeight: 'bold', 
-    fontSize: 15 
-  },
-  form: { 
-    width: '100%' 
-  },
-  inputContainer: { 
-    position: 'relative', 
-    marginBottom: 25 
-  },
-  inputIcon: { 
-    position: 'absolute', 
-    left: 15, 
-    top: 15, 
-    zIndex: 1 
-  },
-  styledInput: { 
-    width: '100%', 
-    padding: 14, 
-    paddingLeft: 45, 
-    fontSize: 16, 
-    borderWidth: 1.5, 
-    borderRadius: 30 
-  },
-  inputLabel: { 
-    position: 'absolute', 
-    pointerEvents: 'none', 
-    fontWeight: '500' 
-  },
-  rememberRow: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginBottom: 25, 
-    marginLeft: 5 
-  },
-  rememberText: { 
-    marginLeft: 10, 
-    fontSize: 14 
-  },
-  mainBtn: { 
-    height: 60, 
-    borderRadius: 30, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    marginTop: 10, 
-    elevation: 4 
-  },
-  mainBtnText: { 
-    color: '#FFF', 
-    fontWeight: 'bold', 
-    fontSize: 18, 
-    letterSpacing: 2 
-  },
-  loaderText: {
-    marginTop: 20,
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: 1,
-    opacity: 0.8
-  }
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 40 },
+  logoHeader: { alignItems: 'center', marginBottom: 25 },
+  logoCircle: { width: 80, height: 80, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 12, elevation: 8 },
+  logoText: { fontSize: 26, fontWeight: '900', letterSpacing: 3 },
+  card: { width: width - 50, padding: 25, borderRadius: 35, borderWidth: 1, elevation: 10, alignSelf: 'center' },
+  toggleContainer: { flexDirection: 'row', height: 50, borderRadius: 25, marginBottom: 35, position: 'relative' },
+  slider: { position: 'absolute', width: '50%', height: '100%', borderRadius: 25 },
+  toggleBtn: { flex: 1, justifyContent: 'center', alignItems: 'center', zIndex: 1 },
+  toggleText: { fontWeight: 'bold', fontSize: 15 },
+  form: { width: '100%' },
+  inputContainer: { position: 'relative', marginBottom: 25 },
+  inputIcon: { position: 'absolute', left: 15, top: 15, zIndex: 1 },
+  styledInput: { width: '100%', padding: 14, paddingLeft: 45, fontSize: 16, borderWidth: 1.5, borderRadius: 30 },
+  inputLabel: { position: 'absolute', pointerEvents: 'none', fontWeight: '500' },
+  rememberRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 25, marginLeft: 5 },
+  rememberText: { marginLeft: 10, fontSize: 14 },
+  mainBtn: { height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
+  mainBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 18, letterSpacing: 2 },
+  loaderText: { marginTop: 20, fontSize: 16, fontWeight: '600', letterSpacing: 1, opacity: 0.8 }
 });

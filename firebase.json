@@ -8,7 +8,7 @@
     "source": "dataconnect"
   },
   "hosting": {
-    "public": "public",
+    "public": "dist",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -20,5 +20,11 @@
         "destination": "/index.html"
       }
     ]
+  },
+  "firestore": {
+    "database": "(default)",
+    "location": "asia-southeast1",
+    "rules": "alertph.rules",
+    "indexes": "alertph"
   }
 }

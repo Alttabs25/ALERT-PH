@@ -1,9 +1,13 @@
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Alert, Linking, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router'; // Added useFocusEffect
+import { useCallback, useState } from 'react'; // Added useCallback
+import { ActivityIndicator, Alert, Linking, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+// Firebase Imports
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../../firebaseConfig';
 
 interface SectionConfig {
   id: string;
@@ -11,12 +15,8 @@ interface SectionConfig {
   items: { label: string; value: string }[];
 }
 
-// Restored: Your saved contacts for the picker
 const SAVED_CONTACTS = [
-  { id: '1', name: 'Jane Doe', relation: 'Sister', phone: '+63 917 123 4567' },
-  { id: '2', name: 'Juan Doe', relation: 'Father', phone: '+63 917 111 2222' },
-  { id: '3', name: 'Maria Doe', relation: 'Mother', phone: '+63 917 333 4444' },
-  { id: '4', name: 'Pedro Doe', relation: 'Brother', phone: '+63 917 555 6666' },
+  { id: '1', name: 'Add Contact', relation: 'N/A', phone: 'None' },
 ];
 
 export default function ProfileScreen() {
@@ -24,56 +24,92 @@ export default function ProfileScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
 
+  const [userData, setUserData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
   const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({
     personal: false, relationships: false, medical: false,
   });
 
-  // Restored: State for the emergency contact picker
   const [primaryContact, setPrimaryContact] = useState(SAVED_CONTACTS[0]);
   const [showContactModal, setShowContactModal] = useState(false);
+
+  // FIX: This ensures the data refreshes EVERY TIME you open the Profile tab
+  useFocusEffect(
+    useCallback(() => {
+      const fetchProfile = async () => {
+        try {
+          const user = auth.currentUser;
+          if (user) {
+            const docRef = doc(db, "users", user.uid);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+              const data = docSnap.data();
+              setUserData(data);
+              
+              // If they have an emergency contact saved, set it
+              if (data.emergencyContact) {
+                setPrimaryContact(data.emergencyContact);
+              } else if (data.father || data.mother) {
+                // Fallback: If no official emergency contact, show the parent
+                setPrimaryContact({
+                    id: 'fallback',
+                    name: data.father || data.mother,
+                    relation: data.father ? 'Father' : 'Mother',
+                    phone: 'Check Records'
+                });
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching profile:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchProfile();
+    }, [])
+  );
 
   const toggleSection = (sectionId: string) => {
     setExpandedSections((prev) => ({ ...prev, [sectionId]: !prev[sectionId] }));
   };
 
   const handleEmergencyCall = () => {
+    if (primaryContact.phone === 'None' || primaryContact.phone === 'Check Records') {
+        return Alert.alert("Error", "Please set a valid phone number in Edit Profile.");
+    }
     const formattedNumber = primaryContact.phone.replace(/\s+/g, '');
     const url = `tel:${formattedNumber}`;
-
-    Linking.canOpenURL(url).then((supported) => {
-      if (!supported) {
-        Alert.alert('Error', 'This device does not support phone calls.');
-      } else {
-        return Linking.openURL(url);
-      }
-    }).catch((err) => console.error('An error occurred', err));
+    Linking.openURL(url);
   };
 
   const sections: SectionConfig[] = [
     {
       id: 'personal', title: 'Personal Details',
       items: [
-        { label: 'Age', value: '28 years' },
-        { label: 'Birthday', value: 'March 14, 1998' },
-        { label: 'Address', value: '123 Main Street, Manila' },
+        { label: 'Age', value: userData?.age || 'Not set' },
+        { label: 'Birthday', value: userData?.birthday || 'Not set' },
+        { label: 'Address', value: userData?.address || 'Not set' },
       ],
     },
     {
       id: 'relationships', title: 'Relationships',
       items: [
-        { label: 'Father', value: 'Juan Doe' },
-        { label: 'Mother', value: 'Maria Doe' },
-        { label: 'Sister', value: 'Jane Doe' },
-        { label: 'Brother', value: 'Pedro Doe' },
+        { label: 'Father', value: userData?.father || 'Not set' },
+        { label: 'Mother', value: userData?.mother || 'Not set' },
+        { label: 'Sister', value: userData?.sister || 'Not set' },
+        { label: 'Brother', value: userData?.brother || 'Not set' },
       ],
     },
     {
       id: 'medical', title: 'Medical Records',
       items: [
-        { label: 'Blood Type', value: 'O+' },
-        { label: 'Medical Conditions', value: 'None' },
-        { label: 'Allergies', value: 'Penicillin' },
-        { label: 'Medications', value: 'Aspirin (as needed)' },
+        { label: 'Blood Type', value: userData?.bloodType || 'Not set' },
+        { label: 'Medical Conditions', value: userData?.conditions || 'None' },
+        { label: 'Allergies', value: userData?.allergies || 'None' },
+        { label: 'Medications', value: userData?.medications || 'None' },
       ],
     },
   ];
@@ -100,6 +136,14 @@ export default function ProfileScreen() {
     );
   };
 
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <View style={styles.topHeader}>
@@ -114,20 +158,17 @@ export default function ProfileScreen() {
           <View style={[styles.profilePicture, { backgroundColor: colors.primary }]}>
             <Ionicons size={60} name="person" color="#FFFFFF" />
           </View>
-          <Text style={[styles.userName, { color: colors.text }]}>John Doe</Text>
-          <Text style={[styles.userLocation, { color: colors.icon }]}>Manila, Philippines</Text>
+          <Text style={[styles.userName, { color: colors.text }]}>{userData?.fullName || "User"}</Text>
+          <Text style={[styles.userLocation, { color: colors.icon }]}>{userData?.address || "Location not set"}</Text>
         </View>
 
         <View style={[styles.emergencyContactSection, { backgroundColor: colors.primary }]}>
           <View style={styles.emergencyContactContent}>
             <View style={styles.emergencyContactHeaderRow}>
               <Text style={styles.emergencyContactLabel}>Primary Emergency Contact</Text>
-              
-              {/* Restored: The pencil icon to edit the primary contact */}
               <TouchableOpacity style={styles.editContactButton} onPress={() => setShowContactModal(true)}>
                 <Ionicons size={12} name="pencil" color="#FFFFFF" />
               </TouchableOpacity>
-              
             </View>
             <Text style={styles.emergencyContactName}>{primaryContact.name} ({primaryContact.relation})</Text>
             <Text style={styles.emergencyContactPhone}>{primaryContact.phone}</Text>
@@ -142,7 +183,6 @@ export default function ProfileScreen() {
         ))}
 
         <View style={styles.actionSection}>
-          {/* Restored: Actually pushes you to the Edit Profile screen instead of the alert! */}
           <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.primary }]} onPress={() => router.push('/edit-profile')}>
             <Ionicons size={20} name="pencil" color="#FFFFFF" />
             <Text style={styles.actionButtonText}>Edit Profile</Text>
@@ -150,7 +190,6 @@ export default function ProfileScreen() {
         </View>
       </ScrollView>
 
-      {/* Restored: The bottom sheet modal to pick a new contact */}
       <Modal visible={showContactModal} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
@@ -160,20 +199,10 @@ export default function ProfileScreen() {
                 <Ionicons size={24} name="close" color={colors.icon} />
               </TouchableOpacity>
             </View>
-            {SAVED_CONTACTS.map((contact) => (
-              <TouchableOpacity
-                key={contact.id}
-                style={[styles.contactOption, { borderBottomColor: colors.border }]}
-                onPress={() => { setPrimaryContact(contact); setShowContactModal(false); }}
-              >
-                <Text style={[styles.contactOptionName, { color: colors.text }]}>{contact.name} ({contact.relation})</Text>
-                <Text style={[styles.contactOptionPhone, { color: colors.icon }]}>{contact.phone}</Text>
-              </TouchableOpacity>
-            ))}
+            <Text style={{color: colors.icon, textAlign: 'center', marginVertical: 20}}>Please add contacts in Edit Profile.</Text>
           </View>
         </View>
       </Modal>
-
     </SafeAreaView>
   );
 }
@@ -184,10 +213,10 @@ const styles = StyleSheet.create({
   settingsCogButton: { padding: 8 },
   container: { flex: 1 },
   headerSection: { alignItems: 'center', paddingVertical: 10, marginBottom: 20 },
-  profilePicture: { width: 100, height: 100, borderRadius: 50, justifyContent: 'center', alignItems: 'center', marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 5 },
+  profilePicture: { width: 100, height: 100, borderRadius: 50, justifyContent: 'center', alignItems: 'center', marginBottom: 16, elevation: 5 },
   userName: { fontSize: 24, fontWeight: 'bold', marginBottom: 4 },
   userLocation: { fontSize: 14 },
-  emergencyContactSection: { marginHorizontal: 20, marginBottom: 20, borderRadius: 12, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 5 },
+  emergencyContactSection: { marginHorizontal: 20, marginBottom: 20, borderRadius: 12, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', elevation: 5 },
   emergencyContactContent: { flex: 1 },
   emergencyContactHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
   emergencyContactLabel: { color: 'rgba(255, 255, 255, 0.8)', fontSize: 12 },
@@ -195,14 +224,14 @@ const styles = StyleSheet.create({
   emergencyContactName: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
   emergencyContactPhone: { color: '#FFFFFF', fontSize: 12 },
   emergencyCallButton: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255, 255, 255, 0.2)', justifyContent: 'center', alignItems: 'center' },
-  section: { marginHorizontal: 20, marginBottom: 12, borderRadius: 12, overflow: 'hidden', borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  section: { marginHorizontal: 20, marginBottom: 12, borderRadius: 12, overflow: 'hidden', borderWidth: 1, elevation: 2 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 16 },
   sectionTitle: { fontSize: 15, fontWeight: '600', flex: 1 },
   sectionItem: { paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   itemLabel: { fontSize: 13, flex: 0.4 },
   itemValue: { fontSize: 13, fontWeight: '500', flex: 0.6, textAlign: 'right' },
   actionSection: { paddingHorizontal: 20, paddingVertical: 20, marginBottom: 40 },
-  actionButton: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 16, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
+  actionButton: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 16, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', elevation: 3 },
   actionButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: 'bold', marginLeft: 8 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
   modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 50 },

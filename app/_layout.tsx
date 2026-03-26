@@ -8,6 +8,8 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { useEffect, useState } from 'react';
 
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
+// --- IMPORT USER PROVIDER ---
+import { UserProvider } from '@/context/UserContext';
 import { auth } from '../firebaseConfig';
 
 SplashScreen.preventAutoHideAsync();
@@ -39,11 +41,10 @@ function RootLayoutNav() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       const inAuthGroup = segments[0] === '(auth)';
 
+      // Redirect logic
       if (user && inAuthGroup) {
-        // Redirect to tabs if logged in and trying to access login screen
         router.replace('/(tabs)');
       } else if (!user && !inAuthGroup && segments[0] !== 'welcome' && segments[0] !== 'index') {
-        // Redirect to login if not logged in
         router.replace('/(auth)/login');
       }
     });
@@ -60,6 +61,8 @@ function RootLayoutNav() {
         <Stack.Screen name="welcome" /> 
         <Stack.Screen name="(auth)" /> 
         <Stack.Screen name="(tabs)" />
+        {/* Added edit-profile here just in case it's a standalone screen */}
+        <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
       </Stack>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
     </NavThemeProvider>
@@ -68,8 +71,11 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <RootLayoutNav />
-    </ThemeProvider>
+    // --- WRAP EVERYTHING IN USERPROVIDER ---
+    <UserProvider>
+      <ThemeProvider>
+        <RootLayoutNav />
+      </ThemeProvider>
+    </UserProvider>
   );
 }

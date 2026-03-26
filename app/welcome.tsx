@@ -9,8 +9,6 @@ export default function WelcomeScreen() {
   const fadeText = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // 1. Draw the Shield Logo (2.5s)
-    // 2. Fade in the "ALERT PH" text (0.8s)
     Animated.sequence([
       Animated.timing(progress, {
         toValue: 1,
@@ -23,19 +21,18 @@ export default function WelcomeScreen() {
         useNativeDriver: true,
       }),
     ]).start(() => {
-      // Small pause before switching to login
+      // FIX: Instead of hardcoding /login, we just navigate to index or home
+      // The Root Layout listener will handle the actual logic.
       setTimeout(() => {
-        router.replace('/(auth)/login'); 
-      }, 1000);
+        router.replace('/(tabs)'); 
+      }, 500);
     });
   }, []);
 
   return (
     <View style={styles.container}>
-      {/* Animated SVG Component */}
       <ShieldLogo progress={progress} />
       
-      {/* Branded Text with Red Accent Line */}
       <Animated.View style={{ opacity: fadeText, alignItems: 'center' }}>
         <View style={styles.accentLine} />
         <Text style={styles.brandTitle}>ALERT PH</Text>

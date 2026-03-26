@@ -1,54 +1,26 @@
 import { Colors } from '@/constants/theme';
+import { useUser } from '@/context/UserContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { ActivityIndicator, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-// Firebase
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../../firebaseConfig';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
+  
+  const userContext = useUser();
+  
+  if (!userContext || !userContext.userData) {
+    return <View style={[styles.loader, { backgroundColor: colors.background }]} />;
+  }
 
-  const [userData, setUserData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [expandedSections, setExpandedSections] = useState<any>({ personal: false, relationships: false, medical: false });
+  const { userData } = userContext;
+  const [expandedSections, setExpandedSections] = useState<any>({ personal: true, relationships: false, medical: false });
 
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true);
-      const unsubscribe = onAuthStateChanged(auth, async (user) => {
-        if (user) {
-          try {
-            const docRef = doc(db, "users", user.uid);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-              setUserData(docSnap.data());
-            }
-          } catch (error) {
-            console.error("Fetch error:", error);
-          } finally {
-            setLoading(false);
-          }
-        } else {
-          setLoading(false);
-          router.replace('/(auth)/login');
-        }
-      });
-      return () => unsubscribe();
-    }, [])
-  );
-
-  // Helper to get the first letter
-  const getInitial = () => {
-    if (userData?.fullName) return userData.fullName.charAt(0).toUpperCase();
-    return "U";
-  };
+  const getInitial = () => userData?.fullName ? userData.fullName.charAt(0).toUpperCase() : "U";
 
   const sections = [
     { id: 'personal', title: 'Personal Details', items: [
@@ -70,19 +42,21 @@ export default function ProfileScreen() {
     ]}
   ];
 
-  if (loading) return <View style={styles.loader}><ActivityIndicator size="large" color={colors.primary} /></View>;
-
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <View style={styles.topHeader}>
-        <TouchableOpacity onPress={() => router.push('/settings')} style={styles.settingsCogButton}>
+        <TouchableOpacity onPress={() => router.push('/settings')}>
           <Ionicons size={24} name="settings" color={colors.icon} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 150 }}>
+      <ScrollView 
+        style={styles.container} 
+        showsVerticalScrollIndicator={false}
+        // FIX: Increased paddingBottom to 180 to push content above the pill navbar
+        contentContainerStyle={{ paddingBottom: 180 }}
+      >
         <View style={styles.headerSection}>
-          {/* GOOGLE STYLE INITIAL AVATAR */}
           <View style={[styles.avatarCircle, { backgroundColor: colors.primary }]}>
             <Text style={styles.avatarLetter}>{getInitial()}</Text>
           </View>
@@ -120,12 +94,11 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
-  loader: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#121212' },
+  loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   topHeader: { alignItems: 'flex-end', padding: 16 },
-  settingsCogButton: { padding: 8 },
   container: { flex: 1 },
   headerSection: { alignItems: 'center', marginBottom: 20 },
-  avatarCircle: { width: 100, height: 100, borderRadius: 50, justifyContent: 'center', alignItems: 'center', elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4 },
+  avatarCircle: { width: 100, height: 100, borderRadius: 50, justifyContent: 'center', alignItems: 'center' },
   avatarLetter: { color: '#FFFFFF', fontSize: 40, fontWeight: 'bold' },
   userName: { fontSize: 24, fontWeight: 'bold', marginTop: 15 },
   userLocation: { fontSize: 14, marginTop: 4 },
@@ -135,6 +108,6 @@ const styles = StyleSheet.create({
   sectionItem: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, borderTopWidth: 0.5 },
   itemLabel: { fontSize: 14 },
   itemValue: { fontSize: 14, fontWeight: 'bold' },
-  actionButton: { margin: 20, height: 55, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', elevation: 3 },
+  actionButton: { margin: 20, height: 55, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   actionButtonText: { color: '#FFF', fontWeight: 'bold', marginLeft: 10, fontSize: 16 }
 });

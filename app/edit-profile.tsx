@@ -1,9 +1,22 @@
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 // Components & Context
 import EmergencyLoader from '@/components/EmergencyLoader';
@@ -35,6 +48,11 @@ export default function EditProfileScreen() {
   const { userData } = useUser();
 
   const [saving, setSaving] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  
+  // Stable date for the wheel
+  const [pickerDate, setPickerDate] = useState(new Date(2005, 5, 25));
+
   const [formData, setFormData] = useState<any>({
     fullName: userData?.fullName || '',
     age: userData?.age || '',
@@ -42,8 +60,6 @@ export default function EditProfileScreen() {
     address: userData?.address || '',
     father: userData?.father || '',
     mother: userData?.mother || '',
-    sister: userData?.sister || '',
-    brother: userData?.brother || '',
     bloodType: userData?.bloodType || 'Unknown',
     conditions: userData?.conditions || '',
     allergies: userData?.allergies || '',
@@ -52,25 +68,49 @@ export default function EditProfileScreen() {
 
   const [showBloodTypeModal, setShowBloodTypeModal] = useState(false);
 
+  // --- DATE LOGIC ---
+  const updateBirthdayState = (date: Date) => {
+    const formatted = date.toLocaleDateString('en-US', {
+      month: 'long', day: 'numeric', year: 'numeric',
+    });
+    setFormData((prev: any) => ({ ...prev, birthday: formatted }));
+  };
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+      if (event.type === 'set' && selectedDate) {
+        setPickerDate(selectedDate);
+        updateBirthdayState(selectedDate);
+      }
+    } else {
+      // iOS: Just update the temp wheel state
+      if (selectedDate) setPickerDate(selectedDate);
+    }
+  };
+
+  const handleConfirmIOS = () => {
+    updateBirthdayState(pickerDate);
+    setShowDatePicker(false);
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
       const user = auth.currentUser;
       if (!user) return;
-
       await setDoc(doc(db, "users", user.uid), {
         ...formData,
         updatedAt: new Date().toISOString()
       }, { merge: true });
 
-      // Show the ambulance animation for a brief moment
       setTimeout(() => {
         setSaving(false);
         router.back();
       }, 1800);
     } catch (e) {
       setSaving(false);
-      Alert.alert("Error", "Failed to save information.");
+      Alert.alert("Error", "Failed to save.");
     }
   };
 
@@ -89,7 +129,7 @@ export default function EditProfileScreen() {
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Edit Profile</Text>
         <TouchableOpacity onPress={handleSave} style={styles.navBtn}>
-           <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 16 }}>Save</Text>
+            <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 16 }}>Save</Text>
         </TouchableOpacity>
       </View>
 
@@ -98,14 +138,26 @@ export default function EditProfileScreen() {
           <View style={[styles.avatarCircle, { backgroundColor: colors.primary }]}>
             <Text style={styles.avatarLetter}>{formData.fullName?.charAt(0).toUpperCase() || "U"}</Text>
           </View>
-          <Text style={{ color: colors.icon, marginTop: 10, fontSize: 12 }}>Avatar generated from name</Text>
         </View>
 
         <View style={[styles.formCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Personal Details</Text>
           <InputField label="Full Name" value={formData.fullName} onChangeText={(t: string) => setFormData({...formData, fullName: t})} colors={colors} />
           <InputField label="Age" value={formData.age} onChangeText={(t: string) => setFormData({...formData, age: t})} colors={colors} />
-          <InputField label="Birthday" value={formData.birthday} onChangeText={(t: string) => setFormData({...formData, birthday: t})} colors={colors} />
+          
+          <TouchableOpacity 
+            style={[styles.inputWrapper, { borderBottomColor: colors.border }]} 
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Text style={[styles.inputLabel, { color: colors.icon }]}>Birthday</Text>
+            <View style={{ flex: 0.65, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ color: formData.birthday ? colors.text : '#555', fontSize: 15 }}>
+                {formData.birthday || 'Select Date'}
+              </Text>
+              <Ionicons name="calendar-outline" size={16} color={colors.icon} />
+            </View>
+          </TouchableOpacity>
+
           <InputField label="Address" value={formData.address} onChangeText={(t: string) => setFormData({...formData, address: t})} colors={colors} />
         </View>
 
@@ -133,14 +185,54 @@ export default function EditProfileScreen() {
         </View>
       </ScrollView>
 
+      {/* --- CROSS-PLATFORM PICKER --- */}
+      {showDatePicker && (
+        <>
+          {Platform.OS === 'ios' ? (
+            <Modal transparent animationType="slide">
+              <View style={styles.iosOverlay}>
+                <View style={[styles.iosPickerBox, { backgroundColor: colors.card }]}>
+                  <View style={styles.iosHeader}>
+                    <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                      <Text style={{ color: colors.icon }}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleConfirmIOS}>
+                      <Text style={{ color: colors.primary, fontWeight: 'bold' }}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <DateTimePicker
+                    value={pickerDate}
+                    mode="date"
+                    display="spinner"
+                    onChange={onDateChange}
+                    maximumDate={new Date()}
+                  />
+                </View>
+              </View>
+            </Modal>
+          ) : (
+            <DateTimePicker
+              value={pickerDate}
+              mode="date"
+              display="default"
+              onChange={onDateChange}
+              maximumDate={new Date()}
+            />
+          )}
+        </>
+      )}
+
+      {/* Blood Type Modal */}
       <Modal visible={showBloodTypeModal} transparent animationType="fade">
         <TouchableOpacity style={styles.modalOverlay} onPress={() => setShowBloodTypeModal(false)}>
           <View style={[styles.dropdownMenu, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            {BLOOD_TYPES.map(type => (
-              <TouchableOpacity key={type} style={styles.dropdownItem} onPress={() => { setFormData({...formData, bloodType: type}); setShowBloodTypeModal(false); }}>
-                <Text style={{ color: colors.text }}>{type}</Text>
-              </TouchableOpacity>
-            ))}
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {BLOOD_TYPES.map(type => (
+                <TouchableOpacity key={type} style={styles.dropdownItem} onPress={() => { setFormData({...formData, bloodType: type}); setShowBloodTypeModal(false); }}>
+                  <Text style={{ color: colors.text }}>{type}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -165,6 +257,10 @@ const styles = StyleSheet.create({
   inputLabel: { flex: 0.35, fontSize: 14 },
   textInput: { flex: 0.65, fontSize: 15, padding: 0 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
-  dropdownMenu: { width: '80%', borderRadius: 16, borderWidth: 1, padding: 10 },
-  dropdownItem: { paddingVertical: 14, paddingHorizontal: 12 }
+  dropdownMenu: { width: '80%', maxHeight: '50%', borderRadius: 16, borderWidth: 1, padding: 10 },
+  dropdownItem: { paddingVertical: 14, paddingHorizontal: 12 },
+  // iOS Specific Styles
+  iosOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' },
+  iosPickerBox: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 30 },
+  iosHeader: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderBottomWidth: 0.5, borderBottomColor: '#444' }
 });

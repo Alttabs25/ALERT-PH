@@ -1,50 +1,50 @@
-import { Ionicons } from '@expo/vector-icons';
-import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from '@react-navigation/native';
-import * as Font from 'expo-font';
+import { ThemeProvider } from '@/context/ThemeContext';
+import { UserProvider } from '@/context/UserContext';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useEffect, useState } from 'react';
-
-import { ThemeProvider, useTheme } from '@/context/ThemeContext';
-// --- IMPORT USER PROVIDER ---
-import { UserProvider } from '@/context/UserContext';
 import { auth } from '../firebaseConfig';
+
+// GLOBAL GATEKEEPER
+let hasFinishedWelcomeAnimation = false;
+
+// Function to break the loop from the Welcome screen
+export const setWelcomeFinished = () => {
+  hasFinishedWelcomeAnimation = true;
+};
 
 SplashScreen.preventAutoHideAsync();
 
-function RootLayoutNav() {
-  const { colorScheme } = useTheme();
+export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
   const router = useRouter();
   const segments = useSegments();
 
   useEffect(() => {
-    async function prepare() {
-      try {
-        await Font.loadAsync(Ionicons.font);
-      } catch (e) {
-        console.warn(e);
-      } finally {
-        setAppIsReady(true);
-        await SplashScreen.hideAsync();
-      }
-    }
-    prepare();
+    SplashScreen.hideAsync();
+    setAppIsReady(true);
   }, []);
 
-  // Handle Authentication Redirects
   useEffect(() => {
     if (!appIsReady) return;
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      const isWelcomeScreen = segments[0] === 'welcome';
       const inAuthGroup = segments[0] === '(auth)';
 
-      // Redirect logic
+      // 1. FORCE THE ANIMATION FIRST
+      if (!hasFinishedWelcomeAnimation) {
+        if (!isWelcomeScreen) {
+          router.replace('/welcome');
+        }
+        return; 
+      }
+
+      // 2. AUTH LOGIC (Only runs if animation is done)
       if (user && inAuthGroup) {
         router.replace('/(tabs)');
-      } else if (!user && !inAuthGroup && segments[0] !== 'welcome' && segments[0] !== 'index') {
+      } else if (!user && !inAuthGroup && !isWelcomeScreen && segments[0] !== 'index') {
         router.replace('/(auth)/login');
       }
     });
@@ -52,29 +52,14 @@ function RootLayoutNav() {
     return unsubscribe;
   }, [appIsReady, segments]);
 
-  if (!appIsReady) return null;
-
   return (
-    <NavThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" /> 
-        <Stack.Screen name="welcome" /> 
-        <Stack.Screen name="(auth)" /> 
-        <Stack.Screen name="(tabs)" />
-        {/* Added edit-profile here just in case it's a standalone screen */}
-        <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
-      </Stack>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-    </NavThemeProvider>
-  );
-}
-
-export default function RootLayout() {
-  return (
-    // --- WRAP EVERYTHING IN USERPROVIDER ---
     <UserProvider>
       <ThemeProvider>
-        <RootLayoutNav />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="welcome" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
       </ThemeProvider>
     </UserProvider>
   );

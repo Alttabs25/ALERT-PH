@@ -53,7 +53,6 @@ export default function ProfileScreen() {
       <ScrollView 
         style={styles.container} 
         showsVerticalScrollIndicator={false}
-        // FIX: Increased paddingBottom to 180 to push content above the pill navbar
         contentContainerStyle={{ paddingBottom: 180 }}
       >
         <View style={styles.headerSection}>
@@ -76,7 +75,10 @@ export default function ProfileScreen() {
             
             {expandedSections[section.id] && section.items.map((item, i) => (
               <View key={i} style={[styles.sectionItem, { borderTopColor: colors.border }]}>
+                {/* Fixed: Added margin to the label to prevent overlap */}
                 <Text style={[styles.itemLabel, { color: colors.icon }]}>{item.label}</Text>
+                
+                {/* Fixed: Value now wraps correctly if it's too long */}
                 <Text style={[styles.itemValue, { color: colors.text }]}>{item.value}</Text>
               </View>
             ))}
@@ -101,13 +103,15 @@ const styles = StyleSheet.create({
   avatarCircle: { width: 100, height: 100, borderRadius: 50, justifyContent: 'center', alignItems: 'center' },
   avatarLetter: { color: '#FFFFFF', fontSize: 40, fontWeight: 'bold' },
   userName: { fontSize: 24, fontWeight: 'bold', marginTop: 15 },
-  userLocation: { fontSize: 14, marginTop: 4 },
+  userLocation: { fontSize: 14, marginTop: 4, textAlign: 'center', paddingHorizontal: 40 },
   section: { marginHorizontal: 20, marginBottom: 12, borderRadius: 12, borderWidth: 1 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', padding: 16 },
   sectionTitle: { fontWeight: '600', fontSize: 15 },
-  sectionItem: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, borderTopWidth: 0.5 },
-  itemLabel: { fontSize: 14 },
-  itemValue: { fontSize: 14, fontWeight: 'bold' },
+  // Fixed: Align items to flex-start so long text wraps nicely from the top
+  sectionItem: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, borderTopWidth: 0.5, alignItems: 'flex-start' },
+  itemLabel: { fontSize: 14, marginRight: 15 }, // Space for the label
+  // Fixed: Added flex: 1 and textAlign: right to prevent overflow
+  itemValue: { fontSize: 14, fontWeight: 'bold', flex: 1, textAlign: 'right' }, 
   actionButton: { margin: 20, height: 55, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   actionButtonText: { color: '#FFF', fontWeight: 'bold', marginLeft: 10, fontSize: 16 }
 });

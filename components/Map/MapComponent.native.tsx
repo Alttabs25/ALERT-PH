@@ -1,11 +1,10 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import MapView, { Callout, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Callout, Marker } from 'react-native-maps';
 
 export default function MapComponent({ locations, initialRegion, getMarkerColor, getMarkerEmoji }: any) {
   return (
     <MapView
-      provider={PROVIDER_GOOGLE}
       style={styles.map}
       initialRegion={initialRegion}
       // --- ADD THESE THREE PROPS ---

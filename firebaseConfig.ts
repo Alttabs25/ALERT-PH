@@ -1,8 +1,12 @@
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import * as SecureStore from 'expo-secure-store';
+import { getApp, getApps, initializeApp } from "firebase/app";
+import {
+  getAuth,
+  getReactNativePersistence,
+  initializeAuth
+} from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// Paste your actual keys from the Firebase Console here!
 const firebaseConfig = {
   apiKey: "AIzaSyCFSx7s5_VPSg6oZEXcfdkU8QvHSErzHyQ",
   authDomain: "alert-ph.firebaseapp.com",
@@ -13,9 +17,24 @@ const firebaseConfig = {
   measurementId: "G-M16JMNZB1X"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// 1. Initialize App
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Export services so you can use them in your login screen
-export const auth = getAuth(app);
+// 2. Initialize Auth with Secure Persistence
+export const auth = (() => {
+  // Check if already initialized to prevent "already-initialized" error
+  if (getApps().length > 0) {
+    try {
+      const existingAuth = getAuth(app);
+      if (existingAuth) return existingAuth;
+    } catch (e) {
+      // Not initialized yet, proceed to initializeAuth
+    }
+  }
+
+  return initializeAuth(app, {
+    persistence: getReactNativePersistence(SecureStore),
+  });
+})();
+
 export const db = getFirestore(app);

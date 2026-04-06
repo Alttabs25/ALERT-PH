@@ -9,15 +9,67 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [contactNumber, setContactNumber] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validateContactNumber = (number: string) => {
+    const numberRegex = /^\d+$/;
+    return numberRegex.test(number) && number.length === 11;
+  };
+
   const handleSignup = () => {
-    if (fullName && email && contactNumber && password) {
-      // Navigate to home after signup
-      router.replace('/(tabs)');
+    setError('');
+
+    if (!fullName.trim()) {
+      setError('Full name is required');
+      return;
     }
+
+    if (!email.trim()) {
+      setError('Email is required');
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    if (!contactNumber.trim()) {
+      setError('Contact number is required');
+      return;
+    }
+
+    if (!validateContactNumber(contactNumber)) {
+      setError('Contact number must be exactly 11 digits');
+      return;
+    }
+
+    if (!password) {
+      setError('Password is required');
+      return;
+    }
+
+    if (!confirmPassword) {
+      setError('Please confirm your password');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    // Navigate to home after signup
+    router.replace('/(tabs)');
   };
 
   return (
@@ -69,11 +121,16 @@ export default function SignupScreen() {
                 borderColor: colors.border,
               },
             ]}
-            placeholder="Contact Number"
+            placeholder="Contact Number (11 digits)"
             placeholderTextColor={colors.icon}
             value={contactNumber}
-            onChangeText={setContactNumber}
+            onChangeText={(value) => {
+              // Only allow numbers, max 11 digits
+              const filtered = value.replace(/[^0-9]/g, '').slice(0, 11);
+              setContactNumber(filtered);
+            }}
             keyboardType="phone-pad"
+            maxLength={11}
           />
 
           <TextInput
@@ -91,6 +148,26 @@ export default function SignupScreen() {
             onChangeText={setPassword}
             secureTextEntry
           />
+
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.background,
+                color: colors.text,
+                borderColor: colors.border,
+              },
+            ]}
+            placeholder="Confirm Password"
+            placeholderTextColor={colors.icon}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+          />
+
+          {error ? (
+            <Text style={[styles.errorText, { color: '#FF6B6B' }]}>{error}</Text>
+          ) : null}
 
           <TouchableOpacity
             style={[styles.button, { backgroundColor: colors.primary }]}
@@ -154,6 +231,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 16,
     fontSize: 14,
+  },
+  errorText: {
+    fontSize: 12,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    fontWeight: '500',
   },
   button: {
     borderRadius: 12,

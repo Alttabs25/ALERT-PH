@@ -1,24 +1,56 @@
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
-import { Alert, FlatList, Linking, Platform, SafeAreaView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-
-const mockHotlines = [
-  { id: '1', name: 'National Emergency Hotline', phone: '911', description: '24/7 Emergency Dispatch' },
-  { id: '2', name: 'Fire Emergency', phone: '112', description: 'Fire and Rescue Services' },
-  { id: '3', name: 'Police', phone: '117', description: 'Police and Security' },
-  { id: '4', name: 'Medical Emergency', phone: '919', description: 'Ambulance Service' },
-  { id: '5', name: 'Suicide Prevention', phone: '887', description: 'Mental Health Crisis Support' },
-];
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Linking,
+  Platform,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
+// Added Firebase imports
+import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { db } from '../../firebaseConfig';
 
 export default function HotlinesScreen() {
   const [searchText, setSearchText] = useState('');
+  const [hotlines, setHotlines] = useState<any[]>([]); // Dynamic state
+  const [loading, setLoading] = useState(true);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
-  const filteredHotlines = mockHotlines.filter((hotline) =>
-    hotline.name.toLowerCase().includes(searchText.toLowerCase()) || hotline.phone.includes(searchText)
+  // --- FETCH DYNAMIC DATA FROM FIREBASE ---
+  useEffect(() => {
+    const q = query(collection(db, "hotlines"), orderBy("name", "asc"));
+    
+    // Real-time listener: if you change a number in Firebase, it updates here instantly
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const hotlineData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setHotlines(hotlineData);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching hotlines: ", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // --- SEARCH LOGIC (STAYS THE SAME) ---
+  const filteredHotlines = hotlines.filter((hotline) =>
+    hotline.name?.toLowerCase().includes(searchText.toLowerCase()) || 
+    hotline.phone?.includes(searchText)
   );
 
   const handleCall = (phone: string) => {
@@ -33,14 +65,20 @@ export default function HotlinesScreen() {
   const renderHotlineItem = ({ item }: any) => (
     <View style={[styles.hotlineCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={styles.hotlineContent}>
-        <View style={[styles.phoneIcon, { backgroundColor: colors.primary }]}><Ionicons size={24} name="call" color="#FFFFFF" /></View>
+        <View style={[styles.phoneIcon, { backgroundColor: colors.primary }]}>
+          <Ionicons size={24} name="call" color="#FFFFFF" />
+        </View>
         <View style={styles.hotlineInfo}>
           <Text style={[styles.hotlineName, { color: colors.text }]}>{item.name}</Text>
           <Text style={[styles.hotlineDescription, { color: colors.icon }]}>{item.description}</Text>
           <Text style={[styles.hotlinePhone, { color: colors.primary }]}>{item.phone}</Text>
         </View>
       </View>
-      <TouchableOpacity style={[styles.quickCallButton, { backgroundColor: colors.primary }]} onPress={() => handleCall(item.phone)} activeOpacity={0.7}>
+      <TouchableOpacity 
+        style={[styles.quickCallButton, { backgroundColor: colors.primary }]} 
+        onPress={() => handleCall(item.phone)} 
+        activeOpacity={0.7}
+      >
         <Ionicons size={20} name="call" color="#FFFFFF" />
       </TouchableOpacity>
     </View>
@@ -48,12 +86,35 @@ export default function HotlinesScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
-      <View style={styles.header}><Text style={[styles.headerTitle, { color: colors.text }]}>Emergency Hotlines</Text></View>
+      <View style={styles.header}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Emergency Hotlines</Text>
+      </View>
+      
       <View style={[styles.searchContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
         <Ionicons size={20} name="search" color={colors.icon} />
-        <TextInput style={[styles.searchInput, { color: colors.text }]} placeholder="Search hotlines..." placeholderTextColor={colors.icon} value={searchText} onChangeText={setSearchText} />
+        <TextInput 
+          style={[styles.searchInput, { color: colors.text }]} 
+          placeholder="Search hotlines..." 
+          placeholderTextColor={colors.icon} 
+          value={searchText} 
+          onChangeText={setSearchText} 
+        />
       </View>
-      <FlatList data={filteredHotlines} renderItem={renderHotlineItem} keyExtractor={(item) => item.id} showsVerticalScrollIndicator={false} contentContainerStyle={styles.listContent} />
+
+      {loading ? (
+        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 50 }} />
+      ) : (
+        <FlatList 
+          data={filteredHotlines} 
+          renderItem={renderHotlineItem} 
+          keyExtractor={(item) => item.id} 
+          showsVerticalScrollIndicator={false} 
+          contentContainerStyle={styles.listContent} 
+          ListEmptyComponent={
+            <Text style={{ textAlign: 'center', color: colors.icon, marginTop: 20 }}>No hotlines found.</Text>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }

@@ -31,8 +31,6 @@ export default function ProfileScreen() {
     { id: 'relationships', title: 'Relationships', items: [
       { label: 'Father', value: userData?.father || 'Not set' },
       { label: 'Mother', value: userData?.mother || 'Not set' },
-      { label: 'Sister', value: userData?.sister || 'Not set' },
-      { label: 'Brother', value: userData?.brother || 'Not set' }
     ]},
     { id: 'medical', title: 'Medical Records', items: [
       { label: 'Blood Type', value: userData?.bloodType || 'Not set' },

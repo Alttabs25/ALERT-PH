@@ -8,6 +8,10 @@ export default function MapComponent({ locations, initialRegion, getMarkerColor,
       provider={PROVIDER_GOOGLE}
       style={styles.map}
       initialRegion={initialRegion}
+      // --- ADD THESE THREE PROPS ---
+      showsUserLocation={true}      // Shows the blue dot
+      showsMyLocationButton={true}  // Adds the 'center on me' button
+      followsUserLocation={true}    // Map moves as you move
     >
       {locations.map((location: any) => (
         <Marker
@@ -39,6 +43,12 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20,
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 3, borderColor: '#FFFFFF',
+    // Added a small shadow so the icons pop more
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   calloutBox: {
     backgroundColor: 'white',

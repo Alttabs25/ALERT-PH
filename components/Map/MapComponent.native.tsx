@@ -15,10 +15,13 @@ export default function MapComponent({ locations, initialRegion, getMarkerColor,
     return (
       <MapView
         style={styles.map}
-        initialRegion={initialRegion}
+        // CHANGED: Use 'region' instead of 'initialRegion' to allow dynamic movement
+        region={initialRegion}
         moveOnMarkerPress={false}
+        showsUserLocation={true} // UX: Shows the blue pulsing dot for the user
+        showsMyLocationButton={false} // We are using your custom button instead
       >
-        {/* USER PIN (Standard Red Pin) */}
+        {/* USER PIN */}
         <Marker
           coordinate={{ 
             latitude: initialRegion.latitude, 
@@ -39,7 +42,14 @@ export default function MapComponent({ locations, initialRegion, getMarkerColor,
             title={location.name}
             description={location.distance}
             pinColor={getMarkerColor ? getMarkerColor(location.type) : '#FF4444'}
-          />
+          >
+            {/* OPTIONAL: If you want to show the emoji on the map instead of just a pin */}
+            {getMarkerEmoji && (
+               <View style={styles.markerContainer}>
+                 <Text style={styles.markerEmoji}>{getMarkerEmoji(location.type)}</Text>
+               </View>
+            )}
+          </Marker>
         ))}
       </MapView>
     );
@@ -62,5 +72,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f0f0f0'
+  },
+  markerContainer: {
+    backgroundColor: 'white',
+    padding: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  markerEmoji: {
+    fontSize: 16,
   }
 });

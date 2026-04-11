@@ -22,7 +22,7 @@ import { db } from '../../firebaseConfig';
 
 export default function HotlinesScreen() {
   const [searchText, setSearchText] = useState('');
-  const [hotlines, setHotlines] = useState<any[]>([]); // Dynamic state
+  const [hotlines, setHotlines] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -31,7 +31,6 @@ export default function HotlinesScreen() {
   useEffect(() => {
     const q = query(collection(db, "hotlines"), orderBy("name", "asc"));
     
-    // Real-time listener: if you change a number in Firebase, it updates here instantly
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const hotlineData = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -47,7 +46,7 @@ export default function HotlinesScreen() {
     return () => unsubscribe();
   }, []);
 
-  // --- SEARCH LOGIC (STAYS THE SAME) ---
+  // --- SEARCH LOGIC ---
   const filteredHotlines = hotlines.filter((hotline) =>
     hotline.name?.toLowerCase().includes(searchText.toLowerCase()) || 
     hotline.phone?.includes(searchText)
@@ -99,6 +98,17 @@ export default function HotlinesScreen() {
           value={searchText} 
           onChangeText={setSearchText} 
         />
+        
+        {/* ENHANCEMENT: Clear button (X) visible only when there is text */}
+        {searchText.length > 0 && (
+          <TouchableOpacity 
+            onPress={() => setSearchText('')} 
+            style={styles.clearButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons size={20} name="close-circle" color={colors.icon} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {loading ? (
@@ -125,6 +135,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: 'bold' },
   searchContainer: { marginHorizontal: 20, marginBottom: 20, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, borderRadius: 12, borderWidth: 1 },
   searchInput: { flex: 1, paddingVertical: 12, paddingHorizontal: 12, fontSize: 14 },
+  clearButton: { padding: 4 }, // Added clear button style
   listContent: { paddingHorizontal: 20, paddingBottom: 150 },
   hotlineCard: { borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   hotlineContent: { flex: 1, flexDirection: 'row', alignItems: 'center' },

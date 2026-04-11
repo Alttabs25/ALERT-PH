@@ -17,10 +17,10 @@ import Animated, {
 
 // Firebase Imports
 import { onAuthStateChanged } from 'firebase/auth';
-import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebaseConfig';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 // --- TYPES ---
 interface Contact {
@@ -81,6 +81,7 @@ export default function ContactsScreen() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [editingContactId, setEditingContactId] = useState<string | null>(null);
   const [newContact, setNewContact] = useState({ name: '', phone: '', relationship: '' });
 
   const colorScheme = useColorScheme();
@@ -102,7 +103,28 @@ export default function ContactsScreen() {
     return () => unsubscribeAuth();
   }, []);
 
-  const handleAddContact = async () => {
+  const resetModalState = () => {
+    setEditingContactId(null);
+    setNewContact({ name: '', phone: '', relationship: '' });
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+    resetModalState();
+  };
+
+  const openAddContactModal = () => {
+    resetModalState();
+    setModalVisible(true);
+  };
+
+  const handleEditContact = (contact: Contact) => {
+    setEditingContactId(contact.id);
+    setNewContact({ name: contact.name, phone: contact.phone, relationship: contact.relationship });
+    setModalVisible(true);
+  };
+
+  const handleSaveContact = async () => {
     const user = auth.currentUser;
     if (!user) return;
     if (!newContact.name.trim() || !newContact.phone.trim() || !newContact.relationship.trim()) {
@@ -110,10 +132,21 @@ export default function ContactsScreen() {
       return;
     }
     try {
-      await addDoc(collection(db, 'users', user.uid, 'contacts'), { ...newContact, createdAt: serverTimestamp() });
-      setNewContact({ name: '', phone: '', relationship: '' });
-      setModalVisible(false);
-    } catch (error) { Alert.alert("Error", "Could not save contact."); }
+      if (editingContactId) {
+        await updateDoc(doc(db, 'users', user.uid, 'contacts', editingContactId), {
+          ...newContact,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        await addDoc(collection(db, 'users', user.uid, 'contacts'), {
+          ...newContact,
+          createdAt: serverTimestamp(),
+        });
+      }
+      closeModal();
+    } catch (error) {
+      Alert.alert("Error", editingContactId ? "Could not update contact." : "Could not save contact.");
+    }
   };
 
   const handleDelete = async (contactId: string) => {
@@ -131,7 +164,7 @@ export default function ContactsScreen() {
     const animation = useSharedValue(isExpanded ? 1 : 0);
     useEffect(() => { animation.value = withTiming(isExpanded ? 1 : 0, { duration: 300 }); }, [isExpanded]);
     const animatedStyle = useAnimatedStyle(() => ({
-      height: interpolate(animation.value, [0, 1], [0, 80], Extrapolate.CLAMP),
+      height: interpolate(animation.value, [0, 1], [0, 150], Extrapolate.CLAMP),
       opacity: animation.value,
     }));
     const renderRightActions = () => (
@@ -158,6 +191,10 @@ export default function ContactsScreen() {
             <TouchableOpacity style={[styles.callButton, { backgroundColor: colors.primary }]} onPress={() => handleCall(item.phone)}>
               <Ionicons size={20} name="call" color="#FFFFFF" /><Text style={styles.callButtonText}>Call</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={[styles.editButton, { borderColor: colors.primary }]} onPress={() => handleEditContact(item)}>
+              <Ionicons size={18} name="create-outline" color={colors.primary} />
+              <Text style={[styles.editButtonText, { color: colors.primary }]}>Edit</Text>
+            </TouchableOpacity>
           </Animated.View>
         </View>
       </Swipeable>
@@ -167,10 +204,16 @@ export default function ContactsScreen() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        
+        {/* HEADER WITH ADD BUTTON */}
         <View style={styles.header}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Emergency Contacts</Text>
-          <TouchableOpacity style={[styles.addButtonTop, { backgroundColor: colors.primary }]} onPress={() => setModalVisible(true)}>
-            <Ionicons size={24} name="add" color="#FFFFFF" />
+          <TouchableOpacity 
+            style={[styles.addButtonTop, { backgroundColor: colors.primary }]} 
+            onPress={openAddContactModal}
+            activeOpacity={0.7}
+          >
+            <Ionicons size={28} name="add" color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
@@ -182,11 +225,11 @@ export default function ContactsScreen() {
             renderItem={({ item }) => <ContactItem item={item} />}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
           />
         )}
 
-        <Modal animationType="fade" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
-           {/* THIS IS THE KEY: The KeyboardAvoidingView must wrap the entire Modal interior */}
+        <Modal animationType="fade" transparent={true} visible={modalVisible} onRequestClose={closeModal}>
           <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
             style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.6)' }]}
@@ -198,8 +241,10 @@ export default function ContactsScreen() {
             >
               <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={styles.modalHeaderRow}>
-                  <Text style={[styles.modalTitle, { color: colors.text }]}>Add Contact</Text>
-                  <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeIconBtn}>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>
+                    {editingContactId ? 'Edit Contact' : 'Add Contact'}
+                  </Text>
+                  <TouchableOpacity onPress={closeModal} style={styles.closeIconBtn}>
                     <Ionicons name="close" size={28} color={colors.text} />
                   </TouchableOpacity>
                 </View>
@@ -209,11 +254,11 @@ export default function ContactsScreen() {
                 <FloatingInput label="Relationship" icon="people-outline" value={newContact.relationship} onChangeText={(t) => setNewContact({...newContact, relationship: t})} colors={colors} />
 
                 <View style={styles.modalButtonGroup}>
-                  <TouchableOpacity style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={() => setModalVisible(false)}>
+                  <TouchableOpacity style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={closeModal}>
                     <Text style={[styles.cancelBtnText, { color: colors.text }]}>CANCEL</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primary }]} onPress={handleAddContact}>
-                    <Text style={styles.saveBtnText}>SAVE</Text>
+                  <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primary }]} onPress={handleSaveContact}>
+                    <Text style={styles.saveBtnText}>{editingContactId ? 'UPDATE' : 'SAVE'}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -228,9 +273,27 @@ export default function ContactsScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  header: { 
+    paddingHorizontal: 20, 
+    paddingTop: 20, 
+    paddingBottom: 10, 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center' 
+  },
   headerTitle: { fontSize: 24, fontWeight: 'bold' },
-  addButtonTop: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  addButtonTop: { 
+    width: 48, 
+    height: 48, 
+    borderRadius: 24, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
   listContent: { paddingHorizontal: 20, paddingBottom: 100 },
   swipeableContainer: { marginBottom: 12 },
   contactCard: { borderRadius: 16, borderWidth: 1, elevation: 2 },
@@ -246,51 +309,22 @@ const styles = StyleSheet.create({
   detailValue: { fontSize: 12, flex: 1 },
   callButton: { flexDirection: 'row', borderRadius: 12, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   callButtonText: { color: '#FFF', fontSize: 14, fontWeight: 'bold', marginLeft: 8 },
+  editButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 30, borderWidth: 1.5, paddingVertical: 10, paddingHorizontal: 20, marginBottom: 12 },
+  editButtonText: { fontSize: 14, fontWeight: 'bold', marginLeft: 8 },
   deleteAction: { backgroundColor: '#F83D3D', justifyContent: 'center', alignItems: 'center', width: 70, height: '100%', borderRadius: 16, marginLeft: 10 },
   
-  // MODAL CENTERING LOGIC (MATCHING LOGIN.TSX)
-  modalOverlay: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
-  },
-  modalScrollContainer: { 
-    flexGrow: 1, 
-    justifyContent: 'center', // This keeps the card in the middle vertically
-    alignItems: 'center', 
-    width: width, // Important to ensure the ScrollView takes full width
-    paddingVertical: 20 
-  },
-  card: { 
-    width: width - 40, 
-    padding: 25, 
-    borderRadius: 35, 
-    borderWidth: 1, 
-    elevation: 10, 
-    alignSelf: 'center' 
-  },
-  modalHeaderRow: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    marginBottom: 25 
-  },
-  modalTitle: { 
-    fontSize: 22, 
-    fontWeight: '900', 
-    letterSpacing: 1 
-  },
-  closeIconBtn: { 
-    padding: 4 
-  },
+  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  modalScrollContainer: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', width: width, paddingVertical: 20 },
+  card: { width: width - 40, padding: 25, borderRadius: 35, borderWidth: 1, elevation: 10, alignSelf: 'center' },
+  modalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
+  modalTitle: { fontSize: 22, fontWeight: '900', letterSpacing: 1 },
+  closeIconBtn: { padding: 4 },
   
-  // INPUT STYLES
   inputContainer: { position: 'relative', marginBottom: 25, width: '100%' },
   inputIcon: { position: 'absolute', left: 15, top: 15, zIndex: 1 },
   styledInput: { width: '100%', padding: 14, paddingLeft: 45, fontSize: 16, borderWidth: 1.5, borderRadius: 30 },
   inputLabel: { position: 'absolute', pointerEvents: 'none', fontWeight: '500' },
   
-  // BUTTONS
   modalButtonGroup: { flexDirection: 'row', gap: 12, marginTop: 10 },
   cancelBtn: { flex: 1, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
   saveBtn: { flex: 1, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center' },
